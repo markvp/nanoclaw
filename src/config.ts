@@ -6,7 +6,7 @@ export const SCHEDULER_POLL_INTERVAL = 60000;
 
 // Absolute paths needed for container mounts
 const PROJECT_ROOT = process.cwd();
-const HOME_DIR = process.env.HOME || '/Users/user';
+const HOME_DIR = process.env.HOME || process.env.USERPROFILE || '/Users/user';
 
 // Mount security: allowlist stored OUTSIDE project root, never mounted into containers
 export const MOUNT_ALLOWLIST_PATH = path.join(
@@ -22,6 +22,12 @@ export const MAIN_GROUP_FOLDER = 'main';
 
 export const CONTAINER_IMAGE =
   process.env.CONTAINER_IMAGE || 'nanoclaw-agent:latest';
+
+// Container runtime: 'docker' or 'container' (Apple Container)
+// Auto-detect: use Docker if available and not on macOS, otherwise Apple Container
+export const CONTAINER_RUNTIME =
+  process.env.CONTAINER_RUNTIME ||
+  (process.platform !== 'darwin' ? 'docker' : 'container');
 export const CONTAINER_TIMEOUT = parseInt(
   process.env.CONTAINER_TIMEOUT || '300000',
   10,

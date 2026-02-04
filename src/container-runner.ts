@@ -10,6 +10,7 @@ import path from 'path';
 import {
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
+  CONTAINER_RUNTIME,
   CONTAINER_TIMEOUT,
   DATA_DIR,
   GROUPS_DIR,
@@ -165,15 +166,37 @@ function buildVolumeMounts(
 function buildContainerArgs(mounts: VolumeMount[]): string[] {
   const args: string[] = ['run', '-i', '--rm'];
 
-  // Apple Container: --mount for readonly, -v for read-write
-  for (const mount of mounts) {
-    if (mount.readonly) {
-      args.push(
-        '--mount',
-        `type=bind,source=${mount.hostPath},target=${mount.containerPath},readonly`,
-      );
-    } else {
-      args.push('-v', `${mount.hostPath}:${mount.containerPath}`);
+  if (CONTAINER_RUNTIME === 'docker') {
+    // Docker: use --mount for all mounts with consistent syntax
+    for (const mount of mounts) {
+      // Convert Windows paths to Docker-compatible format
+      let hostPath = mount.hostPath;
+      if (process.platform === 'win32') {
+        // Convert C:\path to /c/path for Docker on Windows
+        hostPath = hostPath.replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`);
+        hostPath = hostPath.replace(/\\/g, '/');
+      }
+
+      if (mount.readonly) {
+        args.push(
+          '--mount',
+          `type=bind,source=${hostPath},target=${mount.containerPath},readonly`,
+        );
+      } else {
+        args.push('-v', `${hostPath}:${mount.containerPath}`);
+      }
+    }
+  } else {
+    // Apple Container: --mount for readonly, -v for read-write
+    for (const mount of mounts) {
+      if (mount.readonly) {
+        args.push(
+          '--mount',
+          `type=bind,source=${mount.hostPath},target=${mount.containerPath},readonly`,
+        );
+      } else {
+        args.push('-v', `${mount.hostPath}:${mount.containerPath}`);
+      }
     }
   }
 
@@ -219,7 +242,7 @@ export async function runContainerAgent(
   fs.mkdirSync(logsDir, { recursive: true });
 
   return new Promise((resolve) => {
-    const container = spawn('container', containerArgs, {
+    const container = spawn(CONTAINER_RUNTIME, containerArgs, {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
