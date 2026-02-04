@@ -243,13 +243,26 @@ async function main(): Promise<void> {
           'Bash',
           'Read', 'Write', 'Edit', 'Glob', 'Grep',
           'WebSearch', 'WebFetch',
-          'mcp__nanoclaw__*'
+          'mcp__nanoclaw__*',
+          'mcp__ms365__*'
         ],
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
         settingSources: ['project'],
         mcpServers: {
-          nanoclaw: ipcMcp
+          nanoclaw: ipcMcp,
+          // M365 MCP server for Outlook, Teams, Planner, etc.
+          // Only enabled if MS365_MCP_CLIENT_ID is set and token cache exists
+          ...(process.env.MS365_MCP_CLIENT_ID && fs.existsSync('/home/node/.ms365-mcp/.token-cache.json') ? {
+            ms365: {
+              command: 'ms-365-mcp-server',
+              args: ['--org-mode'],
+              env: {
+                MS365_MCP_CLIENT_ID: process.env.MS365_MCP_CLIENT_ID,
+                HOME: '/home/node/.ms365-mcp' // Token cache is here
+              }
+            }
+          } : {})
         },
         hooks: {
           PreCompact: [{ hooks: [createPreCompactHook()] }]

@@ -123,6 +123,16 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  // M365 MCP token cache (shared, allows access to user's M365 data)
+  const m365TokenCacheDir = path.join(DATA_DIR, 'm365');
+  if (fs.existsSync(m365TokenCacheDir)) {
+    mounts.push({
+      hostPath: m365TokenCacheDir,
+      containerPath: '/home/node/.ms365-mcp',
+      readonly: false, // MCP server may need to refresh tokens
+    });
+  }
+
   // Environment file directory (workaround for Apple Container -i env var bug)
   // Only expose specific auth variables needed by Claude Code, not the entire .env
   const envDir = path.join(DATA_DIR, 'env');
@@ -130,7 +140,7 @@ function buildVolumeMounts(
   const envFile = path.join(projectRoot, '.env');
   if (fs.existsSync(envFile)) {
     const envContent = fs.readFileSync(envFile, 'utf-8');
-    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY'];
+    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY', 'MS365_MCP_CLIENT_ID'];
     const filteredLines = envContent.split('\n').filter((line) => {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) return false;
